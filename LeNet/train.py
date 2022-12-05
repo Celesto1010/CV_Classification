@@ -35,6 +35,7 @@ if __name__ == '__main__':
     loader = {'train': train_loader, 'eval': eval_loader}
 
     lenet = LeNet(len(train_dataset.classes))
+    lenet.to(device)
 
     loss_func = nn.CrossEntropyLoss()
     optim = torch.optim.Adam(lenet.parameters(), lr=0.001)

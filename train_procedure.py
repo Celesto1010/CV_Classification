@@ -1,12 +1,27 @@
 """
-常规的训练过程
+常规的训练过程使用的方法。包括：
+create_loader: 对于适用于ImageFolder的文件结构的数据，生成dataloader
+train: 执行训练、验证过程，保存最优的模型参数
 """
 
 import torch
 import copy
+import os
+from torch.utils.data import DataLoader
+from torchvision.datasets import ImageFolder
 
 
-def train(model, dataloaders, criterion, optimizer, device, num_epochs, is_inception=False):
+def create_loader(root_dir, transformer, batch_size, shuffle=True, num_workers=0):
+    train_dataset = ImageFolder(root=os.path.join(root_dir, 'train'),
+                                transform=transformer['train'])
+    eval_dataset = ImageFolder(root=os.path.join(root_dir, 'eval'),
+                               transform=transformer['eval'])
+    train_loader = DataLoader(train_dataset, batch_size, shuffle=shuffle, num_workers=num_workers)
+    eval_loader = DataLoader(eval_dataset, batch_size, shuffle=False, num_workers=num_workers)
+    return train_loader, eval_loader
+
+
+def train(model, dataloaders, criterion, optimizer, device, num_epochs, is_inception=False, inception_weight=0.4):
     """
     通用的模型训练方式
     :param model: 实例化的nn.Module模型对象
@@ -16,6 +31,7 @@ def train(model, dataloaders, criterion, optimizer, device, num_epochs, is_incep
     :param device: 使用的设备 torch.device('cuda') or torch.device('cpu')
     :param num_epochs: 训练轮数
     :param is_inception: 是否添加inception。用于googlenet
+    :param inception_weight: inception辅助分类器的loss权重
     :return: 完成训练的模型，以及每一轮在验证集上的准确率
     """
     val_acc_history = []
@@ -49,7 +65,7 @@ def train(model, dataloaders, criterion, optimizer, device, num_epochs, is_incep
                         loss2 = .0
                         for aux_output in aux_outputs:
                             loss2 += criterion(aux_output, labels)
-                        loss = loss1 + 0.4 * loss2
+                        loss = loss1 + inception_weight * loss2
                     # 否则，直接计算loss
                     else:
                         outputs = model(inputs)
